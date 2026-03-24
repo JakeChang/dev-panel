@@ -8,12 +8,12 @@ import { ProcessManager } from './core/process-manager.js';
 const cli = meow(
   `
   Usage
-    $ dev-manager              Launch TUI
-    $ dev-manager init         Initialize config
-    $ dev-manager add <path>   Add a project
-    $ dev-manager remove <id>  Remove a project
-    $ dev-manager list         List all projects
-    $ dev-manager config       Edit config with $EDITOR
+    $ dev-panel              Launch TUI
+    $ dev-panel init         Initialize config
+    $ dev-panel add <path>   Add a project
+    $ dev-panel remove <id>  Remove a project
+    $ dev-panel list         List all projects
+    $ dev-panel config       Edit config with $EDITOR
 
   Options
     --help    Show this help
@@ -91,7 +91,7 @@ async function main() {
     case 'list': {
       const projects = configManager.getProjects();
       if (projects.length === 0) {
-        console.log('No projects configured. Run `dev-manager add <path>` to add one.');
+        console.log('No projects configured. Run `dev-panel add <path>` to add one.');
         return;
       }
 
@@ -105,8 +105,8 @@ async function main() {
 
     case 'config': {
       const editor = process.env.EDITOR || 'vi';
-      const { execSync } = await import('node:child_process');
-      execSync(`${editor} ${ConfigManager.getConfigPath()}`, { stdio: 'inherit' });
+      const { execFileSync } = await import('node:child_process');
+      execFileSync(editor, [ConfigManager.getConfigPath()], { stdio: 'inherit' });
       break;
     }
 
@@ -115,7 +115,7 @@ async function main() {
       const projects = config.projects;
       if (projects.length === 0) {
         console.log('No projects configured.');
-        console.log('Run `dev-manager init` to create config, then `dev-manager add <path>` to add projects.');
+        console.log('Run `dev-panel init` to create config, then `dev-panel add <path>` to add projects.');
         process.exit(0);
       }
 

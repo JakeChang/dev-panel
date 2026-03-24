@@ -1,8 +1,8 @@
 import { ProcessManager } from './core/process-manager.js';
-import { ProjectState, LogEntry } from './core/types.js';
+import { ProjectState } from './core/types.js';
 import { STATUS_SYMBOLS, formatUptime, formatTimestamp, stringWidth } from './utils/colors.js';
 import { makeProjectUrl } from './utils/terminal-link.js';
-import { exec } from 'node:child_process';
+import { spawn as spawnProcess } from 'node:child_process';
 
 // ANSI
 const RESET = '\x1B[0m';
@@ -37,13 +37,7 @@ function truncateToWidth(str: string, maxWidth: number): string {
   let width = 0;
   let result = '';
   for (const char of str) {
-    const code = char.codePointAt(0)!;
-    const charWidth = (code >= 0x1100 && code <= 0x115f) ||
-      (code >= 0x2e80 && code <= 0xa4cf) ||
-      (code >= 0xac00 && code <= 0xd7af) ||
-      (code >= 0xf900 && code <= 0xfaff) ||
-      (code >= 0xfe30 && code <= 0xff60) ||
-      (code >= 0x20000 && code <= 0x2fa1f) ? 2 : 1;
+    const charWidth = stringWidth(char);
     if (width + charWidth > maxWidth) break;
     result += char;
     width += charWidth;
@@ -57,7 +51,7 @@ export class AppRenderer {
   private showLogs = false;
   private confirmAction: string | null = null;
   private running = true;
-  private logScrollOffset = 0;
+
   private renderTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(manager: ProcessManager) {
@@ -81,6 +75,13 @@ export class AppRenderer {
       this.manager.on('log', () => {
         if (this.showLogs) this.scheduleRender();
       });
+
+      const handleSignal = () => {
+        this.cleanup();
+        this.manager.stopAll().then(resolve);
+      };
+      process.on('SIGINT', handleSignal);
+      process.on('SIGTERM', handleSignal);
 
       process.stdin.setRawMode(true);
       process.stdin.resume();
@@ -140,13 +141,11 @@ export class AppRenderer {
     // Navigation: up/down
     if (s === 'j' || s === '\x1B[B') {
       this.selectedIndex = Math.min(this.selectedIndex + 1, states.length - 1);
-      this.logScrollOffset = 0;
       this.render();
       return;
     }
     if (s === 'k' || s === '\x1B[A') {
       this.selectedIndex = Math.max(this.selectedIndex - 1, 0);
-      this.logScrollOffset = 0;
       this.render();
       return;
     }
@@ -154,7 +153,6 @@ export class AppRenderer {
     // Right arrow: show logs
     if (s === '\x1B[C' || s === 'l') {
       this.showLogs = true;
-      this.logScrollOffset = 0;
       this.render();
       return;
     }
@@ -169,7 +167,6 @@ export class AppRenderer {
     const num = parseInt(s, 10);
     if (num >= 1 && num <= states.length) {
       this.selectedIndex = num - 1;
-      this.logScrollOffset = 0;
       this.render();
       return;
     }
@@ -201,13 +198,13 @@ export class AppRenderer {
       return;
     }
     if (s === 'o') {
-      exec(`open "${makeProjectUrl(selected.config.port)}"`);
+      spawnProcess('open', [makeProjectUrl(selected.config.port)]);
       return;
     }
     if (s === 'O') {
       for (const st of states) {
         if (st.status === 'running') {
-          exec(`open "${makeProjectUrl(st.config.port)}"`);
+          spawnProcess('open', [makeProjectUrl(st.config.port)]);
         }
       }
       return;
@@ -229,7 +226,7 @@ export class AppRenderer {
     const states = this.states;
     const lines: string[] = [];
 
-    lines.push(`${BOLD}${CYAN}  Dev Manager v1.0.0${RESET}                                        ${DIM}[?] Help${RESET}`);
+    lines.push(`${BOLD}${CYAN}  Dev Panel v1.0.0${RESET}                                        ${DIM}[?] Help${RESET}`);
     lines.push(`${DIM}  ${'='.repeat(66)}${RESET}`);
 
     if (this.confirmAction) {
@@ -288,7 +285,7 @@ export class AppRenderer {
 
     // Build left panel lines
     const leftLines: string[] = [];
-    leftLines.push(`${BOLD}${CYAN} Dev Manager${RESET}`);
+    leftLines.push(`${BOLD}${CYAN} Dev Panel${RESET}`);
     leftLines.push(`${DIM} ${'─'.repeat(leftWidth - 2)}${RESET}`);
 
     if (this.confirmAction) {

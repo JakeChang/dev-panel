@@ -1,10 +1,3 @@
-export const STATUS_COLORS = {
-  running: 'green',
-  stopped: 'gray',
-  starting: 'yellow',
-  error: 'red',
-} as const;
-
 export const STATUS_SYMBOLS = {
   running: '●',
   stopped: '○',

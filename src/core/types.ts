@@ -36,8 +36,6 @@ export interface LogEntry {
   text: string;
 }
 
-export type ViewMode = 'dashboard' | 'logs' | 'help';
-
 export const DEFAULT_CONFIG: Config = {
   version: 1,
   defaults: {
